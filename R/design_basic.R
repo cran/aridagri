@@ -45,6 +45,15 @@ anova_crd <- function(data, response, treatment, posthoc = "lsd", alpha = 0.05,
   t <- nlevels(data[[treatment]])
   N <- nrow(data)
   
+  # Check for balanced design
+  trt_counts <- table(data[[treatment]])
+  if (length(unique(trt_counts)) > 1) {
+    warning("Unbalanced design detected: unequal replications across treatments (",
+            paste(names(trt_counts), "=", trt_counts, collapse = ", "),
+            "). Results assume balanced data and may be unreliable. ",
+            "Consider using lme4::lmer() for unbalanced data.", call. = FALSE)
+  }
+  
   # Fit model
   formula_crd <- as.formula(paste(response, "~", treatment))
   model <- aov(formula_crd, data = data)
@@ -145,10 +154,11 @@ anova_crd <- function(data, response, treatment, posthoc = "lsd", alpha = 0.05,
   
   # Post-hoc tests
   posthoc_results <- perform_posthoc(model, data, response, treatment, 
-                                      MS_error, df_error, posthoc, alpha)
+                                      MS_error, df_error, posthoc, alpha,
+                                      verbose = verbose)
   
   # Model diagnostics
-  diagnostics <- check_assumptions(model)
+  diagnostics <- check_assumptions(model, verbose = verbose)
   
   # Return results
   result <- list(
@@ -216,6 +226,14 @@ anova_rbd <- function(data, response, treatment, block, posthoc = "lsd", alpha =
   t <- nlevels(data[[treatment]])
   r <- nlevels(data[[block]])
   N <- nrow(data)
+  
+  # Check for balanced design
+  if (N != t * r) {
+    warning("Unbalanced design detected: expected ", t * r, " observations (", 
+            t, " treatments x ", r, " blocks) but found ", N, ". ",
+            "Results assume balanced data and may be unreliable. ",
+            "Consider using lme4::lmer() for unbalanced data.", call. = FALSE)
+  }
   
   # Fit model
   formula_rbd <- as.formula(paste(response, "~", block, "+", treatment))
@@ -333,7 +351,8 @@ anova_rbd <- function(data, response, treatment, block, posthoc = "lsd", alpha =
   
   # Post-hoc tests
   posthoc_results <- perform_posthoc(model, data, response, treatment, 
-                                      MS_error, df_error, posthoc, alpha)
+                                      MS_error, df_error, posthoc, alpha,
+                                      verbose = verbose)
   
   # Return results
   result <- list(
@@ -403,6 +422,14 @@ anova_rbd_pooled <- function(data, response, treatment, environment, block,
   e <- nlevels(data[[environment]])
   r <- nlevels(data[[block]])
   N <- nrow(data)
+  
+  # Check for balanced design
+  if (N != t * e * r) {
+    warning("Unbalanced design detected: expected ", t * e * r, " observations (", 
+            t, " treatments x ", e, " environments x ", r, " blocks) but found ", N, ". ",
+            "Results assume balanced data and may be unreliable. ",
+            "Consider using lme4::lmer() for unbalanced data.", call. = FALSE)
+  }
   
   # Individual ANOVAs for each environment
   env_levels <- levels(data[[environment]])
